@@ -1,0 +1,175 @@
+#+property: header-args:python :session :results output :eval yes :exports both
+#+startup: inlineimages
+
+* Homework 7 Problem 4
+
+** Setup Python Imports
+
+#+begin_src python
+  import sympy as sym
+#+end_src
+
+#+RESULTS:
+
+** Givens
+
+First we have to ingest the given information so we can use it to solve.
+
+#+begin_src python
+  Ty = -2e3 
+  t = 0.2 # thickness
+  E = 10e6
+  v = 0.33
+  L1 = 6
+  L2 = 12
+
+  sym.var("F(1:3)(x:y)")
+  F3x = 0;
+  F3y = 0;
+  F4x = 0;
+  F4y = 0;
+  F = sym.Matrix([F1x,
+                  F1y,
+                  F2x,
+                  F2y,
+                  F3x,
+                  F3y,
+                  F4x,
+                  F4y])
+
+  sym.var("(u:v)(3:5)")
+  u1 = 0
+  v1 = 0
+  u2 = 0
+  v2 = 0
+  d = sym.Matrix([u1,
+                  v1,
+                  u2,
+                  v2,
+                  u3,
+                  v3,
+                  u4,
+                  v4])
+
+  # the coordinates of each node
+  nodes = sym.Matrix([[ 0,  0],
+                      [ 0, L1],
+                      [L2, L1],
+                      [L2,  0]])
+  assembly = sym.Matrix([[0, 2, 1],
+                         [0, 3, 2]]);
+  connectivity = sym.Matrix([[0, 1, 4, 5, 2, 3],
+                             [0, 1, 6, 7, 4, 5]])
+#+end_src
+
+#+RESULTS:
+
+** Converted Nodal Forces
+
+#+begin_src python
+  F_traction = 0.5*Ty*(t*L1)
+
+  F_conv = sym.Matrix([         0,
+                                0,
+                                0,
+                                0,
+                                0,
+                       F_traction,
+                                0,
+                       F_traction])
+#+end_src
+
+#+RESULTS:
+
+** Stiffness Equations
+
+First we start by calculating $[B]$ for each element.
+
+#+begin_src python
+  B = list()
+
+  for row_num in range(assembly.rows):
+      row = assembly.row(row_num)
+      i = row[0];
+      j = row[1];
+      m = row[2];
+
+      beta_i = nodes[j, 1] - nodes[m, 1]
+      beta_j = nodes[m, 1] - nodes[i, 1]
+      beta_m = nodes[i, 1] - nodes[j, 1]
+      gamma_i = nodes[m, 0] - nodes[j, 0]
+      gamma_j = nodes[i, 0] - nodes[m, 0]
+      gamma_m = nodes[j, 0] - nodes[i, 0]
+      B.append(sym.Matrix([[ beta_i,       0,  beta_j,       0,  beta_m,       0],
+                           [      0, gamma_i,       0, gamma_j,       0, gamma_m],
+                           [gamma_i,  beta_i, gamma_j,  beta_j, gamma_m,  beta_m]]))
+#+end_src
+
+#+RESULTS:
+
+Next we create the $[D]$ matrix. This is the same for each element since they are the same material.
+
+#+begin_src python
+  D = E / (1 - v) * sym.Matrix([[1 - v,     v,                0],
+                                [    v, 1 - v,                0],
+                                [    0,     0, (1 - 2 * v) / 2]])
+#+end_src
+
+#+RESULTS:
+
+Next we can find the area of each triangle using the area of a polygon.
+
+#+begin_src python
+  A = list()
+
+  for row_num in range(assembly.rows):
+      row = assembly.row(row_num)
+      i = sym.Point(nodes[row[0], :])
+      j = sym.Point(nodes[row[1], :])
+      m = sym.Point(nodes[row[2], :])
+      shape = sym.Polygon(i, j, m)
+      A.append(shape.area)
+#+end_src
+
+#+RESULTS:
+
+Finally we have all of the components for our element stiffness matrices.
+
+#+begin_src python
+  k = list()
+
+  for e in range(assembly.rows):
+      k.append(t*A[e]*B[e].T*D*B[e])
+#+end_src
+
+#+RESULTS:
+
+Next we must assemble the global stiffness matrix
+
+#+begin_src python
+  k_g = sym.zeros(2*nodes.rows)
+
+  for e in range(assembly.rows):
+      for i in range(6):
+          for j in range(6):
+              k_g[connectivity[e, i], connectivity[e, j]] = k[e][i, j]
+#+end_src
+
+#+RESULTS:
+
+** Solve for Displacements & Forces
+
+Now that we have the global stiffness matrix we can solve for the unknown displacements & forces.
+
+#+begin_src python
+  soln = sym.solve(sym.Eq(k_g*d,F+F_conv))
+  print(soln)
+#+end_src
+
+#+RESULTS:
+: {F1x: 0.0, F1y: 0.0, F2x: 1.39271641791044e+17, F2y: -1.03164179104477e+17, u3: -26666666.6666665, u4: 1.50531045751634e-7, v3: 53333333.3333332, v4: 53333333.3333333}
+
+# Local Variables:
+# org-confirm-babel-evaluate: nil
+# python-shell-interpreter: "python3.13"
+# End:

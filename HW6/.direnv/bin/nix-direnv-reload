@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+if [[ ! -d "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6" ]]; then
+  echo "Cannot find source directory; Did you move it?"
+  echo "(Looking for "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6")"
+  echo 'Cannot force reload with this script - use "direnv reload" manually and then try again'
+  exit 1
+fi
+
+# rebuild the cache forcefully
+_nix_direnv_force_reload=1 direnv exec "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6" true
+
+# Update the mtime for .envrc.
+# This will cause direnv to reload again - but without re-building.
+touch "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6/.envrc"
+
+# Also update the timestamp of whatever profile_rc we have.
+# This makes sure that we know we are up to date.
+touch -r "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6/.envrc" "/Users/isaacspencer/Documents/School/Spring 2025/AE 625 Structures II/Homeworks/HW6/.direnv"/*.rc
