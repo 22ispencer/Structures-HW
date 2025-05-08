@@ -1,4 +1,4 @@
-#+property: header-args:python :session :results output :eval yes :exports both
+#+property: header-args:python :session :results output :eval yes :exports code
 #+startup: inlineimages
 
 * Homework 7 Problem 4
@@ -6,7 +6,8 @@
 ** Setup Python Imports
 
 #+begin_src python
-  import sympy as sym
+  import math
+  from sympy import *
 #+end_src
 
 #+RESULTS:
@@ -23,63 +24,82 @@ First we have to ingest the given information so we can use it to solve.
   L1 = 6
   L2 = 12
 
-  sym.var("F(1:3)(x:y)")
+  (F1x, F1y, F2x, F2y) = symbols("F1x, F1y, F2x, F2y")
   F3x = 0;
   F3y = 0;
   F4x = 0;
   F4y = 0;
-  F = sym.Matrix([F1x,
-                  F1y,
-                  F2x,
-                  F2y,
-                  F3x,
-                  F3y,
-                  F4x,
-                  F4y])
+  F = Matrix([F1x,
+              F1y,
+              F2x,
+              F2y,
+              F3x,
+              F3y,
+              F4x,
+              F4y])
 
-  sym.var("(u:v)(3:5)")
+  var("(u:v)(3:5)")
   u1 = 0
   v1 = 0
   u2 = 0
   v2 = 0
-  d = sym.Matrix([u1,
-                  v1,
-                  u2,
-                  v2,
-                  u3,
-                  v3,
-                  u4,
-                  v4])
+  d = Matrix([u1,
+              v1,
+              u2,
+              v2,
+              u3,
+              v3,
+              u4,
+              v4])
 
   # the coordinates of each node
-  nodes = sym.Matrix([[ 0,  0],
-                      [ 0, L1],
-                      [L2, L1],
-                      [L2,  0]])
-  assembly = sym.Matrix([[0, 2, 1],
-                         [0, 3, 2]]);
-  connectivity = sym.Matrix([[0, 1, 4, 5, 2, 3],
-                             [0, 1, 6, 7, 4, 5]])
+  nodes = Matrix([[ 0,  0],
+                  [ 0, L1],
+                  [L2, L1],
+                  [L2,  0]])
+  assembly = Matrix([[0, 2, 1],
+                     [0, 3, 2]]);
+  connectivity = Matrix([[0, 1, 4, 5, 2, 3],
+                         [0, 1, 6, 7, 4, 5]])
 #+end_src
 
 #+RESULTS:
 
 ** Converted Nodal Forces
 
-#+begin_src python
+#+begin_src python 
   F_traction = 0.5*Ty*(t*L1)
 
-  F_conv = sym.Matrix([         0,
-                                0,
-                                0,
-                                0,
-                                0,
-                       F_traction,
-                                0,
-                       F_traction])
+  F_conv = Matrix([         0,
+                            0,
+                            0,
+                            0,
+                            0,
+                   F_traction,
+                            0,
+                   F_traction])
+
+  pprint(F_conv)
 #+end_src
 
 #+RESULTS:
+#+begin_example
+⎡   0   ⎤
+⎢       ⎥
+⎢   0   ⎥
+⎢       ⎥
+⎢   0   ⎥
+⎢       ⎥
+⎢   0   ⎥
+⎢       ⎥
+⎢   0   ⎥
+⎢       ⎥
+⎢-1200.0⎥
+⎢       ⎥
+⎢   0   ⎥
+⎢       ⎥
+⎣-1200.0⎦
+#+end_example
 
 ** Stiffness Equations
 
@@ -100,22 +120,45 @@ First we start by calculating $[B]$ for each element.
       gamma_i = nodes[m, 0] - nodes[j, 0]
       gamma_j = nodes[i, 0] - nodes[m, 0]
       gamma_m = nodes[j, 0] - nodes[i, 0]
-      B.append(sym.Matrix([[ beta_i,       0,  beta_j,       0,  beta_m,       0],
-                           [      0, gamma_i,       0, gamma_j,       0, gamma_m],
-                           [gamma_i,  beta_i, gamma_j,  beta_j, gamma_m,  beta_m]]))
+      B.append(Matrix([[ beta_i,       0,  beta_j,       0,  beta_m,       0],
+                       [      0, gamma_i,       0, gamma_j,       0, gamma_m],
+                       [gamma_i,  beta_i, gamma_j,  beta_j, gamma_m,  beta_m]]))
+      pprint(B[-1])
+      print("")
 #+end_src
 
 #+RESULTS:
+#+begin_example
+⎡ 0    0   6  0  -6  0 ⎤
+⎢                      ⎥
+⎢ 0   -12  0  0  0   12⎥
+⎢                      ⎥
+⎣-12   0   0  6  12  -6⎦
+
+⎡-6  0    6    0   0   0 ⎤
+⎢                        ⎥
+⎢0   0    0   -12  0   12⎥
+⎢                        ⎥
+⎣0   -6  -12   6   12  0 ⎦
+#+end_example
 
 Next we create the $[D]$ matrix. This is the same for each element since they are the same material.
 
 #+begin_src python
-  D = E / (1 - v) * sym.Matrix([[1 - v,     v,                0],
-                                [    v, 1 - v,                0],
-                                [    0,     0, (1 - 2 * v) / 2]])
+  D = E/(1-v**2)*Matrix([[1, v,       0],
+
+                         [v, 1,       0],
+
+                         [0, 0, (1-v)/2]])
+  pprint(D)
 #+end_src
 
 #+RESULTS:
+: ⎡11222085.0634048  3703288.07092358         0       ⎤
+: ⎢                                                   ⎥
+: ⎢3703288.07092358  11222085.0634048         0       ⎥
+: ⎢                                                   ⎥
+: ⎣       0                 0          3759398.4962406⎦
 
 Next we can find the area of each triangle using the area of a polygon.
 
@@ -124,14 +167,17 @@ Next we can find the area of each triangle using the area of a polygon.
 
   for row_num in range(assembly.rows):
       row = assembly.row(row_num)
-      i = sym.Point(nodes[row[0], :])
-      j = sym.Point(nodes[row[1], :])
-      m = sym.Point(nodes[row[2], :])
-      shape = sym.Polygon(i, j, m)
+      i = Point(nodes[row[0], :])
+      j = Point(nodes[row[1], :])
+      m = Point(nodes[row[2], :])
+      shape = Polygon(i, j, m)
       A.append(shape.area)
+      print(A[-1])
 #+end_src
 
 #+RESULTS:
+: 36
+: 36
 
 Finally we have all of the components for our element stiffness matrices.
 
@@ -140,36 +186,150 @@ Finally we have all of the components for our element stiffness matrices.
 
   for e in range(assembly.rows):
       k.append(t*A[e]*B[e].T*D*B[e])
+      pprint(k[-1])
+      print("")
 #+end_src
 
 #+RESULTS:
+#+begin_example
+⎡3897744360.90226           0                  0          -1948872180.45113  -3897744360.90226  1948872180.45113 ⎤
+⎢                                                                                                                ⎥
+⎢        0          11635057793.7381   -1919784535.96678          0          1919784535.96678   -11635057793.7381⎥
+⎢                                                                                                                ⎥
+⎢        0          -1919784535.96678  2908764448.43452           0          -2908764448.43452  1919784535.96678 ⎥
+⎢                                                                                                                ⎥
+⎢-1948872180.45113          0                  0          974436090.225564   1948872180.45113   -974436090.225564⎥
+⎢                                                                                                                ⎥
+⎢-3897744360.90226  1919784535.96678   -2908764448.43452  1948872180.45113   6806508809.33677   -3868656716.41791⎥
+⎢                                                                                                                ⎥
+⎣1948872180.45113   -11635057793.7381  1919784535.96678   -974436090.225564  -3868656716.41791  12609493883.9636 ⎦
+
+⎡2908764448.43452           0          -2908764448.43452  1919784535.96678           0          -1919784535.96678⎤
+⎢                                                                                                                ⎥
+⎢        0          974436090.225564   1948872180.45113   -974436090.225564  -1948872180.45113          0        ⎥
+⎢                                                                                                                ⎥
+⎢-2908764448.43452  1948872180.45113   6806508809.33677   -3868656716.41791  -3897744360.90226  1919784535.96678 ⎥
+⎢                                                                                                                ⎥
+⎢1919784535.96678   -974436090.225564  -3868656716.41791  12609493883.9636   1948872180.45113   -11635057793.7381⎥
+⎢                                                                                                                ⎥
+⎢        0          -1948872180.45113  -3897744360.90226  1948872180.45113   3897744360.90226           0        ⎥
+⎢                                                                                                                ⎥
+⎣-1919784535.96678          0          1919784535.96678   -11635057793.7381          0          11635057793.7381 ⎦
+#+end_example
 
 Next we must assemble the global stiffness matrix
 
 #+begin_src python
-  k_g = sym.zeros(2*nodes.rows)
+  k_g = zeros(2*nodes.rows)
 
   for e in range(assembly.rows):
       for i in range(6):
           for j in range(6):
-              k_g[connectivity[e, i], connectivity[e, j]] = k[e][i, j]
+              C = connectivity
+              k_g[C[e, i], C[e, j]] += k[e][i,j]
+
+  pprint(k_g)
 #+end_src
 
 #+RESULTS:
+#+begin_example
+⎡6806508809.33677           0          -3897744360.90226  1948872180.45113           0          -3868656716.41791  -2908764448.43452  1919784535.96678 ⎤
+⎢                                                                                                                                                      ⎥
+⎢        0          12609493883.9636   1919784535.96678   -11635057793.7381  -3868656716.41791          0          1948872180.45113   -974436090.225564⎥
+⎢                                                                                                                                                      ⎥
+⎢-3897744360.90226  1919784535.96678   6806508809.33677   -3868656716.41791  -2908764448.43452  1948872180.45113           0                  0        ⎥
+⎢                                                                                                                                                      ⎥
+⎢1948872180.45113   -11635057793.7381  -3868656716.41791  12609493883.9636   1919784535.96678   -974436090.225564          0                  0        ⎥
+⎢                                                                                                                                                      ⎥
+⎢        0          -3868656716.41791  -2908764448.43452  1919784535.96678   6806508809.33677           0          -3897744360.90226  1948872180.45113 ⎥
+⎢                                                                                                                                                      ⎥
+⎢-3868656716.41791          0          1948872180.45113   -974436090.225564          0          12609493883.9636   1919784535.96678   -11635057793.7381⎥
+⎢                                                                                                                                                      ⎥
+⎢-2908764448.43452  1948872180.45113           0                  0          -3897744360.90226  1919784535.96678   6806508809.33677   -3868656716.41791⎥
+⎢                                                                                                                                                      ⎥
+⎣1919784535.96678   -974436090.225564          0                  0          1948872180.45113   -11635057793.7381  -3868656716.41791  12609493883.9636 ⎦
+#+end_example
 
 ** Solve for Displacements & Forces
 
 Now that we have the global stiffness matrix we can solve for the unknown displacements & forces.
 
 #+begin_src python
-  soln = sym.solve(sym.Eq(k_g*d,F+F_conv))
+  soln = solve(Eq(k_g*d,F+F_conv))
   print(soln)
+  F1x = soln[F1x]
+  F1y = soln[F1y]
+  F2x = soln[F2x]
+  F2y = soln[F2y]
+  u3 = soln[u3]
+  u4 = soln[u4]
+  v3 = soln[v3]
+  v4 = soln[v4]
+
+  d = Matrix([u1,
+              v1,
+              u2,
+              v2,
+              u3,
+              v3,
+              u4,
+              v4])
+
+  F = Matrix([F1x,
+              F1y,
+              F2x,
+              F2y,
+              F3x,
+              F3y,
+              F4x,
+              F4y])
 #+end_src
 
 #+RESULTS:
-: {F1x: 0.0, F1y: 0.0, F2x: 1.39271641791044e+17, F2y: -1.03164179104477e+17, u3: -26666666.6666665, u4: 1.50531045751634e-7, v3: 53333333.3333332, v4: 53333333.3333333}
+: {F1x: 4800.00000000053, F1y: -161.303148848863, F2x: -4800.00000000053, F2y: 2561.30314884912, u3: 3.46588628325664e-7, u4: -4.33245657476931e-7, v3: -1.94566650277567e-6, v4: -2.07696503179274e-6}
+
+** Stress & Strain
+
+Now that we have the displacements we can find the strains
+
+#+begin_src python
+  d_e = list([Matrix([u1,
+                      v1,
+                      u3,
+                      v3,
+                      u2,
+                      v2]),
+              Matrix([u1,
+                      v1,
+                      u4,
+                      v4,
+                      u3,
+                      v3])])
+
+  strain = [B[i]*d_e[i] for i in range(assembly.rows)]
+  stress = [D[i]*strain[i] for i in range(assembly.rows)]
+  pprint(strain)
+  print("")
+  pprint(stress)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+⎡⎡2.07953176995398e-6⎤  ⎡-2.59947394486158e-6⎤⎤
+⎢⎢                   ⎥  ⎢                    ⎥⎥
+⎢⎢         0         ⎥, ⎢1.57558234820485e-6 ⎥⎥
+⎢⎢                   ⎥  ⎢                    ⎥⎥
+⎣⎣-1.1673999016654e-5⎦  ⎣-3.10377876112533e-6⎦⎦
+
+⎡⎡23.3366824144763 ⎤  ⎡-9.62660085068256⎤⎤
+⎢⎢                 ⎥  ⎢                 ⎥⎥
+⎢⎢        0        ⎥, ⎢5.83483531486479 ⎥⎥
+⎢⎢                 ⎥  ⎢                 ⎥⎥
+⎣⎣-131.006609994995⎦  ⎣-11.4941868608614⎦⎦
+#+end_example
 
 # Local Variables:
 # org-confirm-babel-evaluate: nil
 # python-shell-interpreter: "python3.13"
 # End:
+
